@@ -1,0 +1,3 @@
+function h = EigModel_residue( x, e )
+
+%
