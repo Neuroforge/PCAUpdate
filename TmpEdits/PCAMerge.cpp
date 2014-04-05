@@ -134,7 +134,7 @@ void PCAMerge::computeAdd()
 	// Dimension of newH must be n x t
 	std::cout << newH.size() << std::endl;
 	
-	//TODO : Implement Gram Schmidt Orthonormalization.
+	//TODO : Implement Gram Schmidt Orthonormalization. DONE
 	cv::Mat nu = orth( newH );
 
 	//TODO : Forgetting about residues at the moment.
@@ -156,7 +156,15 @@ void PCAMerge::computeAdd()
 	*/
 
 	//First part of the matrix in equation (20) in paper - Correlation of m1
-	cv::Mat tempeval = cv::Mat::zeros( (m1.eigenvalues.rows + nu.cols) , 1, m1.eigenvalues.type() );
+	//
+	int n,p,t,q;
+
+	n = m1.eigenvectors.rows; // = m2.eigenvectors.rows
+	t = nu.cols; //
+	p = m1.eigenvalues.rows;
+	q = m2.eigenvalues.rows;
+
+	cv::Mat tempeval = cv::Mat::zeros( (p + t) , 1, m1.eigenvalues.type() );
 	m1.eigenvalues.copyTo( tempeval.rowRange(0,m1.eigenvalues.rows) );
 
 	cv::Mat A1 = ( N / nObs ) * cv::Mat::diag(tempeval);
@@ -168,10 +176,10 @@ void PCAMerge::computeAdd()
 
 	cv::Mat A2 = cv::Mat::zeros( A1.size(), A1.type() );
 
-	A2( cv::Range(0,m1.eigenvalues.rows), cv::Range(0, m1.eigenvalues.rows) ) = D * G.t();
-	A2( cv::Range(0,m1.eigenvalues.rows), cv::Range(m1.eigenvalues.rows, A1.cols) ) = D * Gamma.t();
-	A2( cv::Range(m1.eigenvalues.rows, A1.rows), cv::Range(0,m1.eigenvalues.rows) ) = E * G.t();
-	A2( cv::Range(m1.eigenvalues.rows, A1.rows), cv::Range(m1.eigenvalues.rows, A1.cols) ) = E * Gamma.t();
+	A2( cv::Range(0,p), cv::Range(0, p) ) = D * G.t();
+	A2( cv::Range(0,p), cv::Range(p, A1.cols) ) = D * Gamma.t();
+	A2( cv::Range(p, A1.rows), cv::Range(0,p) ) = E * G.t();
+	A2( cv::Range(p, A1.rows), cv::Range(p, A1.cols) ) = E * Gamma.t();
 
 	A2 = A2 * ( M / nObs );
 
@@ -179,10 +187,10 @@ void PCAMerge::computeAdd()
 	cv::Mat gamma = nu.t() * dorg;
 	cv::Mat A3 = cv::Mat( A1.size(), A1.type() );
 	
-	A3( cv::Range(0,m1.eigenvalues.rows), cv::Range(0,m1.eigenvalues.rows) ) = g * g.t();
-	A3( cv::Range(0,m1.eigenvalues.rows), cv::Range(m1.eigenvalues.rows, A1.cols) ) = g * gamma.t(); 
-	A3( cv::Range(m1.eigenvalues.rows, A1.rows), cv::Range(0, m1.eigenvalues.rows) ) = gamma * g.t(); 
-	A3( cv::Range(m1.eigenvalues.rows, A1.rows), cv::Range(m1.eigenvalues.rows, A1.cols) ) = gamma * gamma.t();
+	A3( cv::Range(0,p), cv::Range(0,p) ) = g * g.t();
+	A3( cv::Range(0,p), cv::Range(p, A1.cols) ) = g * gamma.t(); 
+	A3( cv::Range(p, A1.rows), cv::Range(0,p) ) = gamma * g.t(); 
+	A3( cv::Range(p, A1.rows), cv::Range(p, A1.cols) ) = gamma * gamma.t();
 
 	A3 = ( N * M / (nObs*nObs) ) * A3;
 
@@ -195,12 +203,12 @@ void PCAMerge::computeAdd()
 	eigenVals = m3.eigenvalues;
 	m3.eigenvectors = m3.eigenvectors.t();
 
-	cv::Mat m3Temp = cv::Mat::zeros( m1.eigenvectors.rows, A.cols, A.type() );
+	cv::Mat m3Temp = cv::Mat::zeros( n, A.cols, A.type() );
 
-	m3Temp( cv::Range::all(), cv::Range(0,m1.eigenvalues.rows)) = m1.eigenvectors;
-	m3Temp( cv::Range::all(), cv::Range(m1.eigenvalues.rows, A.cols)) = nu;
+	m3Temp( cv::Range::all(), cv::Range(0,p)) = m1.eigenvectors;
+	m3Temp( cv::Range::all(), cv::Range(p, A.cols)) = nu;
 
-	eigenVecs = m3Temp * m3.eigenvalues;
+	eigenVecs = m3Temp * m3.eigenvectors;
 
 	//Look at how many eigenvalues must be returned. Call that function as required.
 }
