@@ -1,4 +1,4 @@
-cv::Mat EigModel_add( cv::Mat m1, cv::Mat m2, std::string method, std::string param)
+cv::Mat EigModel_add( cv::Mat m1Vec,cv::Mat m1Vals, cv::m1Mean, cv::Mat m2Vec,cv::Mat m2Vals, cv::Mat m2Mean)
 {
 
 	//Daniel's notes on this code
@@ -40,9 +40,11 @@ cv::Mat EigModel_add( cv::Mat m1, cv::Mat m2, std::string method, std::string pa
 	//  EigModel_rank
 
 
+	//WHAT ARE THE RESIDUES IN THE CONTEXT OF THE MODEL???
+
 	// Compute the new number of observations
-	int N = m1.rows;
-	int M = m1.rows;
+	int N = m1Vec.rows;
+	int M = m1Vec.rows;
 	int P = M*N
 
 	// The body of the function follows....
@@ -54,16 +56,19 @@ cv::Mat EigModel_add( cv::Mat m1, cv::Mat m2, std::string method, std::string pa
 	cv::Mat dorg = cv::subtract(m1Mean, m2Mean);
 
 	// Compute a new spanning basis
-	cv::Mat G = m1.transpose() * m2;
-	cv::Mat H = m2 - m1 * G;
-	cv::Mat g = m1.transpose() * dorg;
-	cv::Mat h = dorg - m1.vct * g; // residue wrt X
+	cv::Mat G = m1Vec.transpose() * m2Vec;
+	cv::Mat H = m2Vec - m1Vec * G;
+	cv::Mat g = m1Vec.transpose() * dorg;
+	cv::Mat h = dorg - m1Vals * g; // residue wrt X
 
 	if ~isempty( [H(:,sum(H.*H,1) > eps), h(:,sum(h.*h,1) > eps) ] )
 	{
 	  nu = orth( [H(:,sum(H.*H,1) > eps), h(:,sum(h.*h,1) > eps) ] );
 	  // make sure - errors can occur if the deflated dimensionof X is less than that of Y
-	  H = m1.transpose() * nu;
+	  H = m1Vec.transpose() * nu;
+	  
+	  
+	  //WHAT DOES THE PERIOD AFTER H MEAN???
 	  nu = nu( :, sum( H.*H, 1 ) < eps );
 	}
 	else
@@ -74,20 +79,20 @@ cv::Mat EigModel_add( cv::Mat m1, cv::Mat m2, std::string method, std::string pa
 	// The residue in each gives the energy in the residue space.
 	// The size of the space may have changed - in fact may dissapear.
 	// so here compute the residue per "direction"...
-	resn1 = m1.rows-m1.cols;
+	resn1 = m1Vec.rows-m1Vec.cols;
 	if (resn1 > 0)
 	{
-	  rpern1 = m1.residue / resn1;
+	  rpern1 = m1Vec.residue / resn1;
 	}
 	else
 	{
 	  rpern1 = 0;
 	}
 
-	int resn2 = m2.rows-m2.cols;
+	int resn2 = m2Vec.rows-m2Vec.cols;
 	if resn2 > 0
 	{
-	  rpern2 = m2.residue / resn2;
+	  rpern2 = m2Vec.residue / resn2;
 	}
 	else
 	{
@@ -98,18 +103,21 @@ cv::Mat EigModel_add( cv::Mat m1, cv::Mat m2, std::string method, std::string pa
 	// A term for the correlation of m1, use reside for error correction
 
 	[n m] = nu.size();
-	A1 = (N/P)*cv::diag( [m1.val',  rpern1*cv::Mat::ones(1,m, CV_64FC1)]);
+	A1 = (N/P)*cv::diag( [m1Vals.transpose(),  rpern1*cv::Mat::ones(1,m, CV_64FC1)]);
 
 	// A term for the correlation of m2; project m2.vct onto the new basis
 	// use residue for error correction
-	Gamma = nu.transpose() * m2;
-	D = G*dcv::iag(m2.val);
-	E = Gamma*diag(m2.val);
-	A2 = (m2.N/m3.N)*[ D*G' D*Gamma'; ...
-								  E*G' E*Gamma'] + rpern2*eye(size(A1,1));
+	Gamma = nu.transpose() * m2Vec;
+	D = G*dcv::iag(m2Vals);
+	E = Gamma*diag(m2Vals);
+	
+	
+	//WHAT IS ALL OF THIS CRAZY BRACKET SCHTICK??? [;...]????
+	A2 = (m2Vec.N/m3Vec.N)*[ D*G.transpose() D*Gamma.transpose(); ...
+								  E*G.transpose() E*Gamma.transpose()] + rpern2*eye(size(A1,1));
 
 	// A term for the difference between means
-	gamma = nu' * dorg;
+	gamma = nu.transpose() * dorg;
 	A3 = (N*M)/(P^2)*[g*g.transpose() g*gamma.transpose(); ...
 							   gamma*g.transpose() gamma*gamma.transpose()];
 
@@ -120,24 +128,28 @@ cv::Mat EigModel_add( cv::Mat m1, cv::Mat m2, std::string method, std::string pa
 	cv::PCA pca = cv::PCA(A, NULL, cv::CV_PCA_AS_ROW);
 
 	// now can compute...
-	[m3.vct m3.val] = eig( A ); // the eigen-solution
-	m3 = [m1 nu]* m3; // rotate the basis set into place - can fail for v.high dim data
-	m3val = cv::diag(pca.eignevalues);             // keep only the diagonal
+	[m3Vec m3Val] = eig( A ); // the eigen-solution
+	m3Vec = [m1 nu]* m3; // rotate the basis set into place - can fail for v.high dim data
+	m3Vals = cv::diag(pca.eignevalues);             // keep only the diagonal
 
 	////NEED TO REVIEW PAPER FOR THIS ONE/////
 
+
+	//DOESNT OPENCV DO THIS FOR US ALREADY?
 	if nargin == 4 // Deflate the EigModel
+	{
 	  n = Emodel_rank( m3.val, method, param );
-	  m3.val = m3.val( 1:n );
-	  m3.vct = m3.vct( :, 1:n );
+	  m3Val = m3Val( 1:n );
+	  m3Vec = m3Vec( :, 1:n );
+	}
 	else // make sure every eigenvalue is >= 0
-	  n = Emodel_rank( m3.val, 'keept', eps ); // max actual rank
-	  m3.val = m3.val( 1:n );
-	  m3.vct = m3.vct( :, 1:n );
-	end
+	{
+	  n = Emodel_rank( m3Vals, 'keept', eps ); // max actual rank
+	  m3Vals = m3Vals( 1:n );
+	  m3Vec = m3Vec( :, 1:n );
+	}
 
-
-	resn3 = size( m3.vct,1 ) - size( m3.vct,2 );
+	resn3 = m3Vec.rows - m3Vec.cols;
 	// the add the residues per direction, and scale by the number of residue
 	// directions in the result.
 	m3.residue = resn3*( rpern1 + rpern2 );
