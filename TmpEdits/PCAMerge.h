@@ -28,7 +28,7 @@ class PCAMerge
 
 	void computeAdd();
 	
-}
+};
 
 cv::Mat orth( cv::Mat vecs);
 #endif

@@ -99,14 +99,16 @@ void PCAMerge::computeAdd()
 	// H			   : n x q
 	// g 			   : p x 1
 	// h               : n x 1
-	//New Basis
+	
 	//Note Eigenvectors from cv::PCA are stored as rows. We need to transpose them.
 	
 	m1.eigenvectors = m1.eigenvectors.t();
 	m2.eigenvectors = m2.eigenvectors.t();
 
+	//New Basis
 	cv::Mat G = m1.eigenvectors.t() * m2.eigenvectors; 
 	cv::Mat H = m2.eigenvectors - ( m1.eigenvectors * G );// H is orthogonal to m1.eigenvectors
+	
 	cv::Mat g = m1.eigenvectors.t() * dorg;
 	cv::Mat h = dorg - (m1.eigenvectors * g); // h is orthogonal to dorg
 
@@ -206,7 +208,7 @@ void PCAMerge::computeAdd()
 
 int main( int argc, char** argv)
 {
-	cv::Mat A = ( cv::Mat_<double>(3,3) << 1,0,0,0,1,0,0,0,1);
+	cv::Mat A = ( cv::Mat_<double>(3,3) << 0.5,0,1,0,1,0,1,0,0);
 	cv::Mat B = orth(A);
 
 	return 0;
