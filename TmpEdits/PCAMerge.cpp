@@ -221,7 +221,11 @@ void PCAMerge::computeAdd()
 
 	//Look at how many eigenvalues must be returned. Call that function as required.
 	//Calling the function like the matlab code.
+	//I'd try not to transpose the eigenvectors in order to be more OpenCV friendly.
 	int nValsToKeep = keepVals(KEEP_T,eigenVals,eps);
+
+	eigenVals = eigenVals(cv::Range(0,nValsToKeep),cv::Range::all()).clone();
+	eigenVecs = eigenVecs(cv::Range::all(),cv::Range(0,nValsToKeep)).clone();
 
 }
 
