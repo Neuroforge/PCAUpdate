@@ -16,6 +16,15 @@ class PCAMerge
 	int N;
 	int M;
 
+	enum KeepMethod{
+		KEEP_N,
+		KEEP_F,
+		KEEP_T,
+		KEEP_R
+	};
+
+	int keepVals(KeepMethod method,cv::Mat eigenvals,float param);
+
 	public:
 	
 	cv::Mat eigenVals;
@@ -28,6 +37,7 @@ class PCAMerge
 
 	void computeAdd();
 	
+
 };
 
 cv::Mat orth( cv::Mat vecs);

@@ -45,7 +45,7 @@ cv::Mat EigModel_add( cv::Mat m1Vec,cv::Mat m1Vals, cv::m1Mean, cv::Mat m2Vec,cv
 	// Compute the new number of observations
 	int N = m1Vec.rows;
 	int M = m1Vec.rows;
-	int P = M*N
+	int P = M*N;
 
 	// The body of the function follows....
 
@@ -68,7 +68,7 @@ cv::Mat EigModel_add( cv::Mat m1Vec,cv::Mat m1Vals, cv::m1Mean, cv::Mat m2Vec,cv
 	  H = m1Vec.transpose() * nu;
 	  
 	  
-	  //WHAT DOES THE PERIOD AFTER H MEAN???
+	  //WHAT DOES THE PERIOD AFTER H MEAN??? -> element wise operation, multiplication in this case (Luca)
 	  nu = nu( :, sum( H.*H, 1 ) < eps );
 	}
 	else
@@ -112,7 +112,7 @@ cv::Mat EigModel_add( cv::Mat m1Vec,cv::Mat m1Vals, cv::m1Mean, cv::Mat m2Vec,cv
 	E = Gamma*diag(m2Vals);
 	
 	
-	//WHAT IS ALL OF THIS CRAZY BRACKET SCHTICK??? [;...]????
+	//WHAT IS ALL OF THIS CRAZY BRACKET SCHTICK??? [;...]???? -> it is constructing a new matrix by putting together the other matrixes (Luca)
 	A2 = (m2Vec.N/m3Vec.N)*[ D*G.transpose() D*Gamma.transpose(); ...
 								  E*G.transpose() E*Gamma.transpose()] + rpern2*eye(size(A1,1));
 

@@ -101,7 +101,8 @@ void PCAMerge::computeAdd()
 	// h               : n x 1
 	
 	//Note Eigenvectors from cv::PCA are stored as rows. We need to transpose them.
-	
+	//Note We should probably put the transposed vectors in other matrices, in order to leave the original models untouched (Luca)
+
 	m1.eigenvectors = m1.eigenvectors.t();
 	m2.eigenvectors = m2.eigenvectors.t();
 
@@ -140,7 +141,7 @@ void PCAMerge::computeAdd()
 	//TODO : Forgetting about residues at the moment.
 	//Residues are the eigenvalues which were not used in the model m1 / m2.
 	//The following was used in matlab for including residues
-	//presn1 = size( m1.vct, 1) - size(m1.vct,2 );
+	//resn1 = size( m1.vct, 1) - size(m1.vct,2 );
 	/* if resn1 > 0
   		rpern1 = m1.residue / resn1;
 	   else
@@ -198,6 +199,14 @@ void PCAMerge::computeAdd()
 	cv::Mat A = A1 + A2 + A3;
 	A = ( A + A.t() ) / 2.0;
 
+	/*	(Luca)
+		Is this step right? Because PCA expects A to have samples inside, not correlation matrices. We should probably call
+		cv::eigen instead
+
+		[m3.vct m3.val] = eig( A ); % the eigen-solution
+		m3.vct = [m1.vct nu]* m3.vct; % rotate the basis set into place - can fail for v.high dim data
+		m3.val = diag(m3.val);             % keep only the diagonal
+	*/
 	m3 = cv::PCA( A, cv::noArray(), cv::PCA::DATA_AS_ROW );
 
 	eigenVals = m3.eigenvalues;
@@ -211,8 +220,66 @@ void PCAMerge::computeAdd()
 	eigenVecs = m3Temp * m3.eigenvectors;
 
 	//Look at how many eigenvalues must be returned. Call that function as required.
+	//Calling the function like the matlab code.
+	int nValsToKeep = keepVals(KEEP_T,eigenVals,eps);
+
 }
 
+int PCAMerge::keepVals(KeepMethod method,cv::Mat eigenvals,float param){
+	/*
+	if strcmp(method,'keepN')
+	n = min(param,size(val,1));
+	elseif strcmp(method,'keepf')
+	s = sum(abs(val)).*param; % total power (values are squared already)
+	ss = abs(val(1));
+	m = size(val,1); % number of eigenvalues
+	n = 2;
+	while (ss <= s) & (n <= m)
+	ss = ss + abs(val(n));
+	n = n+1;
+	end
+	n = n-1; % back up one place
+	elseif strcmp(method,'keept')
+	n = sum(val > param);
+	elseif strcmp(method,'keepr')
+	n = min( size(val,1), round(size(val,1)*param) );
+	end
+	*/
+	int n=0;
+	switch (method)
+	{
+	case PCAMerge::KEEP_N:
+		n= cv::min((int)param,eigenVals.size().width);
+		break;
+	case PCAMerge::KEEP_F:
+		/*
+			I sum all the eigenvalues (returned value is a cv::Scalar object, and thus I need to access its 0-element)
+			and then compute the number of eigenvalues which are sufficient to have "s" explained variance.
+		*/
+		cv::Mat absEigenVals = cv::abs(eigenVals);
+		absEigenVals.convertTo(absEigenVals,CV_32FC1);
+		float s = cv::sum(absEigenVals)[0]*param; 
+		float ss = absEigenVals.at<float>(0);
+		int nEig = absEigenVals.size().width;
+		n=1;
+		// I don't back up one place (n--) after the cycle because you don't know how "big" the eigenvalue is. 
+		for(int i=1;i<nEig && ss <=s;i++){
+			ss +=absEigenVals.at<float>(i);
+			n++;
+		}
+		break;
+	case PCAMerge::KEEP_T:
+		cv::Mat absEigenVals = cv::abs(eigenVals);
+		threshold(absEigenVals,absEigenVals,param,1,CV_THRESH_BINARY);
+		n = countNonZero(absEigenVals);
+		break;
+	case PCAMerge::KEEP_R:
+		int newSize = (int)(eigenVals.size().width*param+0.5); //Rounding
+		n = cv::min( eigenVals.size().width, newSize);
+		break;
+	}
+	return n;
+}
 
 int main( int argc, char** argv)
 {
